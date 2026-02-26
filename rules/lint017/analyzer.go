@@ -30,11 +30,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	insp.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(n ast.Node) {
 		fn := n.(*ast.FuncDecl)
 		name := fn.Name.Name
-		if !strings.HasPrefix(name, "Require") {
-			return
-		}
-		suffix := name[len("Require"):]
-		if suffix == "" {
+		suffix, ok := extractSuffix(name, "Require", "require")
+		if !ok || suffix == "" {
 			return
 		}
 		expectedFile := fmt.Sprintf("require_%s.go", toSnake(suffix))
@@ -45,6 +42,15 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	})
 
 	return nil, nil
+}
+
+func extractSuffix(name string, prefixes ...string) (string, bool) {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(name, prefix) {
+			return name[len(prefix):], true
+		}
+	}
+	return "", false
 }
 
 func toSnake(s string) string {

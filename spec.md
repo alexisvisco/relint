@@ -88,10 +88,10 @@ Files in packages whose name contains `store`, `service`, or `handler` (excludin
 If a file contains more than one such exported layer method, it is flagged. Exported non-method functions are ignored by this rule.
 
 **LINT-016 — Middleware naming: Inject***
-In `handler` packages, any function named `Inject{Name}` (with non-empty `{Name}`) MUST be declared in `inject_{name}.go`. Violations are flagged.
+In `handler` packages, any function named `Inject{Name}` or `inject{Name}` (with non-empty `{Name}`) MUST be declared in `inject_{name}.go`. Violations are flagged.
 
 **LINT-017 — Middleware naming: Require***
-In `handler` packages, any function named `Require{Name}` (with non-empty `{Name}`) MUST be declared in `require_{name}.go`. Violations are flagged.
+In `handler` packages, any function named `Require{Name}` or `require{Name}` (with non-empty `{Name}`) MUST be declared in `require_{name}.go`. Violations are flagged.
 
 **LINT-018 — Middleware naming outside handler**
 Outside `handler` packages, exported functions with middleware signature `func(http.Handler) http.Handler` MUST be named `Middleware`. Non-matching names are flagged.
