@@ -1,0 +1,14 @@
+package fmtfix
+
+import "fmt"
+
+type (
+	// Bar is a type.
+	Bar struct{}
+
+	// Baz is a type.
+	Baz struct{}
+)
+
+// Foo does something.
+func Foo() { fmt.Println() }

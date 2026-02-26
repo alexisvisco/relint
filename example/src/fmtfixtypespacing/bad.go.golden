@@ -1,0 +1,9 @@
+package fmtfixtypespacing
+
+type (
+	TenantInput struct{}
+
+	TenantOutput struct {
+		Body string
+	}
+)

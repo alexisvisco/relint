@@ -1,0 +1,5 @@
+package fmt002
+
+type Bar struct{} // want `FMT-002: declarations must be in order: type, const, var, func`
+
+func Foo() {} // want `FMT-002: declarations must be in order: type, const, var, func`

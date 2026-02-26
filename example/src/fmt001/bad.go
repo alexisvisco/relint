@@ -1,0 +1,5 @@
+package fmt001
+
+type Foo struct{}
+
+type Bar struct{} // want `FMT-001: consecutive type declarations should be merged into a type block`
