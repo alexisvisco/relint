@@ -13,5 +13,16 @@ import (
 func TestAnalyzer(t *testing.T) {
 	_, thisFile, _, _ := runtime.Caller(0)
 	testdata := filepath.Join(filepath.Dir(thisFile), "..", "..", "example")
-	analysistest.Run(t, testdata, lint009.Analyzer, "lint009")
+
+	t.Run("default_exceptions", func(t *testing.T) {
+		lint009.Analyzer.Flags.Set("exceptions", "types")
+		analysistest.Run(t, testdata, lint009.Analyzer, "lint009", "lint009models", "lint009typesok", "lint009statusok")
+	})
+
+	t.Run("types_not_excepted", func(t *testing.T) {
+		lint009.Analyzer.Flags.Set("exceptions", "")
+		analysistest.Run(t, testdata, lint009.Analyzer, "lint009typesbad")
+	})
+
+	t.Cleanup(func() { lint009.Analyzer.Flags.Set("exceptions", "types") })
 }

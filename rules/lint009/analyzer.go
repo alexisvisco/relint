@@ -10,8 +10,7 @@ import (
 )
 
 var (
-	pluralPackagesFlag string
-	exceptionsFlag     string
+	exceptionsFlag string
 )
 
 var Analyzer = &analysis.Analyzer{
@@ -22,12 +21,6 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func init() {
-	Analyzer.Flags.StringVar(
-		&pluralPackagesFlag,
-		"plural-packages",
-		"handlers,services,stores,types,models",
-		"comma-separated list of package names considered plural and therefore forbidden",
-	)
 	Analyzer.Flags.StringVar(
 		&exceptionsFlag,
 		"exceptions",
@@ -48,11 +41,10 @@ func parseSet(flag string) map[string]bool {
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	plural := parseSet(pluralPackagesFlag)
 	exceptions := parseSet(exceptionsFlag)
 
 	pkgName := pass.Pkg.Name()
-	if !plural[pkgName] || exceptions[pkgName] {
+	if !isPluralPackageName(pkgName) || exceptions[pkgName] {
 		return nil, nil
 	}
 
@@ -68,4 +60,21 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	})
 
 	return nil, nil
+}
+
+func isPluralPackageName(name string) bool {
+	name = strings.TrimSpace(strings.ToLower(name))
+	if len(name) < 2 {
+		return false
+	}
+	if !strings.HasSuffix(name, "s") {
+		return false
+	}
+
+	// Common singular endings that should not be treated as plural.
+	if strings.HasSuffix(name, "ss") || strings.HasSuffix(name, "us") || strings.HasSuffix(name, "is") {
+		return false
+	}
+
+	return true
 }

@@ -62,9 +62,9 @@ Package names MUST NOT contain underscores. Any `package` declaration with an un
 Package-name suffixes can be excluded from this check via configuration. Default excluded suffix: `_test`.
 
 **LINT-009 — Package name plural**
-Package names in the configured forbidden list MUST NOT be used.
+Package names that are pluralized MUST NOT be used.
 
-Default forbidden package names: `handlers`, `services`, `stores`, `types`, `models`.
+The rule detects plural names generically (for example names ending with `s`), with configurable package-name exceptions.
 Default configured exception: `types`.
 
 **LINT-010 — Interface location**
