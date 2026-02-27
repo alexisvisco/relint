@@ -68,10 +68,39 @@ func run(pass *analysis.Pass) (interface{}, error) {
 func expectedRouteFile(handlerName, routeName string) string {
 	handlerSnake := toSnake(handlerName)
 	routeSnake := toSnake(routeName)
-	if handlerName == routeName {
+	routePart := normalizeRoutePart(handlerSnake, routeSnake)
+	if routePart == "" {
 		return fmt.Sprintf("%s_handler.go", handlerSnake)
 	}
-	return fmt.Sprintf("%s_%s_handler.go", handlerSnake, routeSnake)
+	return fmt.Sprintf("%s_%s_handler.go", handlerSnake, routePart)
+}
+
+func normalizeRoutePart(handlerSnake, routeSnake string) string {
+	routePart := routeSnake
+	aliases := []string{handlerSnake, pluralize(handlerSnake)}
+	for _, alias := range aliases {
+		routePart = strings.TrimPrefix(routePart, alias+"_")
+		routePart = strings.TrimSuffix(routePart, "_"+alias)
+	}
+	routePart = strings.Trim(routePart, "_")
+	if routePart == handlerSnake || routePart == pluralize(handlerSnake) {
+		return ""
+	}
+	return routePart
+}
+
+func pluralize(s string) string {
+	if strings.HasSuffix(s, "y") && len(s) > 1 {
+		prev := s[len(s)-2]
+		if !strings.ContainsRune("aeiou", rune(prev)) {
+			return s[:len(s)-1] + "ies"
+		}
+	}
+	if strings.HasSuffix(s, "s") || strings.HasSuffix(s, "x") || strings.HasSuffix(s, "z") ||
+		strings.HasSuffix(s, "ch") || strings.HasSuffix(s, "sh") {
+		return s + "es"
+	}
+	return s + "s"
 }
 
 func toSnake(s string) string {

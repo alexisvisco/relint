@@ -13,5 +13,5 @@ import (
 func TestAnalyzer(t *testing.T) {
 	_, thisFile, _, _ := runtime.Caller(0)
 	testdata := filepath.Join(filepath.Dir(thisFile), "..", "..", "example")
-	analysistest.Run(t, testdata, lint022.Analyzer, "lint022", "lint022handlerbase")
+	analysistest.Run(t, testdata, lint022.Analyzer, "lint022", "lint022handlerbase", "lint022dedup", "lint022dedupok")
 }

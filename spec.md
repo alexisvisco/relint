@@ -111,13 +111,16 @@ In packages whose name contains `store`, direct `return` expressions of these kn
 - `gorm.ErrRecordNotFound`
 
 **LINT-022 — Handler route file naming**
-In `handler` packages, exported methods on receivers `*{Name}Handler` MUST be located in files named `{name}_{route}_handler.go` (where `{route}` is the method name in snake_case). Deviations are flagged.
+In `handler` packages, exported methods on receivers `*{Name}Handler` MUST be located in files named `{name}_{route}_handler.go` (where `{route}` is the method name in snake_case), after de-duplicating `{name}` when it is already present in `{route}` (including simple plural forms).
 
-Special case: when route name equals handler base name (for example `TenantHandler.Tenant`), the valid file is `{name}_handler.go` (for example `tenant_handler.go`).
+Examples:
+- `TenantHandler.Tenant` -> `tenant_handler.go`
+- `AssetHandler.ListAssets` -> `asset_list_handler.go`
+- `AssetHandler.GetAsset` -> `asset_get_handler.go`
 
 **LINT-023 — Route Input/Output type location**
 In `handler` packages, types suffixed `Input` or `Output` are treated as route types. If a matching handler method `{Route}` exists, the type MUST be declared either:
-- in the corresponding route file (`{name}_{route}_handler.go`, or `{name}_handler.go` when route equals handler base name), or
+- in the corresponding route file determined by LINT-022 naming (including de-duplication), or
 - in the shared handler file (`{name}.go`).
 
 Otherwise it is ignored by this rule.
