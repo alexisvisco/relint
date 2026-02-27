@@ -135,3 +135,11 @@ In `handler` packages, struct types that are referenced only by body structs (`*
 
 **LINT-027 — No json tags in model structs**
 In `model` packages, struct fields MUST NOT declare `json` tags. Fields with `json` tags are flagged.
+
+**LINT-028 — Exported model fields require gorm tag**
+In `model` packages, exported struct fields MUST declare a `gorm` tag attribute.
+
+**LINT-029 — Relation field pointer shape**
+In `model` packages, relation fields identified by `gorm` tag attributes `foreignKey`, `many2many`, or `polymorphicType` MUST be either:
+- a pointer (`*Type`), or
+- a slice of pointers (`[]*Type`).

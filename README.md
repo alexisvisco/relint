@@ -65,6 +65,8 @@ Or run the built binary:
 - `LINT-025` Handler struct file location
 - `LINT-026` Body-only helper struct naming
 - `LINT-027` No `json` tags in `model` package structs
+- `LINT-028` Exported model fields require `gorm` tag in package `model`
+- `LINT-029` Model relation fields must be `*Type` or `[]*Type` in package `model`
 
 See [spec.md](./spec.md) for full rule definitions.
 
@@ -93,6 +95,12 @@ To inspect all flags:
 ```bash
 ./relint -help
 ./relint -flags
+```
+
+Run only `fmtfix` with a convenience flag:
+
+```bash
+./relint -only-fmtfix ./...
 ```
 
 ## Excluding rules
