@@ -1,0 +1,11 @@
+package model
+
+type User struct {
+	ID string // want `LINT-027: model struct fields must not declare json tags`
+
+	Email string `db:"email"` // want `LINT-027: model struct fields must not declare json tags`
+
+	Age int `db:"age" validate:"required"` // want `LINT-027: model struct fields must not declare json tags`
+
+	Status string `db:"status"`
+}

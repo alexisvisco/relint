@@ -132,3 +132,6 @@ In `handler` packages, struct types suffixed `Handler` MUST be declared in `{nam
 In `handler` packages, struct types that are referenced only by body structs (`*BodyInput`/`*BodyOutput`) MUST:
 - start with the parent body prefix (parent name without `Input`/`Output`), and
 - end with the corresponding parent suffix (`Input` or `Output`).
+
+**LINT-027 — No json tags in model structs**
+In `model` packages, struct fields MUST NOT declare `json` tags. Fields with `json` tags are flagged.

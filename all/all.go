@@ -38,6 +38,7 @@ import (
 	"github.com/alexisvisco/relint/rules/lint024"
 	"github.com/alexisvisco/relint/rules/lint025"
 	"github.com/alexisvisco/relint/rules/lint026"
+	"github.com/alexisvisco/relint/rules/lint027"
 )
 
 // Analyzers is the list of all relint analyzers.
@@ -74,6 +75,7 @@ var Analyzers = []*analysis.Analyzer{
 	lint024.Analyzer,
 	lint025.Analyzer,
 	lint026.Analyzer,
+	lint027.Analyzer,
 }
 
 func init() {

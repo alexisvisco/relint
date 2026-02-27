@@ -64,6 +64,7 @@ Or run the built binary:
 - `LINT-024` Shared body type naming in `handler`
 - `LINT-025` Handler struct file location
 - `LINT-026` Body-only helper struct naming
+- `LINT-027` No `json` tags in `model` package structs
 
 See [spec.md](./spec.md) for full rule definitions.
 

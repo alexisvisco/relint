@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"go/ast"
 	"go/format"
+	"go/printer"
 	"go/token"
 	"sort"
 	"strings"
@@ -172,7 +173,7 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 		return
 	}
 
-	newSrc := generateText(pass, sorted)
+	newSrc := generateText(pass, f, sorted)
 	if newSrc == nil {
 		return
 	}
@@ -195,13 +196,22 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 	})
 }
 
-func generateText(pass *analysis.Pass, items []declItem) []byte {
+func generateText(pass *analysis.Pass, file *ast.File, items []declItem) []byte {
+	commentMap := ast.NewCommentMap(pass.Fset, file, file.Comments)
 	var result bytes.Buffer
 	for i, item := range items {
 		if i > 0 {
 			result.WriteString("\n\n")
 		}
 		if item.decl != nil {
+			if _, ok := item.decl.(*ast.FuncDecl); ok {
+				funcText := formatDeclWithComments(pass, commentMap, item.decl)
+				if funcText == nil {
+					return nil
+				}
+				result.Write(funcText)
+				continue
+			}
 			if gd, ok := item.decl.(*ast.GenDecl); ok && gd.Tok == token.TYPE && gd.Lparen != token.NoPos && len(gd.Specs) > 1 {
 				block := buildTypeBlockWithSpacing(pass, gd)
 				if block == nil {
@@ -226,6 +236,18 @@ func generateText(pass *analysis.Pass, items []declItem) []byte {
 		}
 	}
 	return result.Bytes()
+}
+
+func formatDeclWithComments(pass *analysis.Pass, commentMap ast.CommentMap, decl ast.Decl) []byte {
+	var buf bytes.Buffer
+	node := &printer.CommentedNode{
+		Node:     decl,
+		Comments: commentMap.Filter(decl).Comments(),
+	}
+	if err := format.Node(&buf, pass.Fset, node); err != nil {
+		return nil
+	}
+	return buf.Bytes()
 }
 
 // buildMergedTypeBlock produces a `type ( ... )` block from a slice of single-spec GenDecls.
