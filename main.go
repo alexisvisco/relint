@@ -48,15 +48,32 @@ func preprocessArgs(args []string, analyzers []*analysis.Analyzer) ([]string, er
 	}
 
 	// Keep fmtfix enabled and disable all other analyzers.
-	filtered = append(filtered, "-fmtfix=true")
+	injected := make([]string, 0, len(analyzers)+1)
+	injected = append(injected, "-fmtfix=true")
 	for _, analyzer := range analyzers {
 		if analyzer.Name == "fmtfix" {
 			continue
 		}
-		filtered = append(filtered, "-"+analyzer.Name+"=false")
+		injected = append(injected, "-"+analyzer.Name+"=false")
 	}
 
-	return filtered, nil
+	// Analyzer flags must appear before package patterns (e.g. ./...).
+	out := make([]string, 0, len(filtered)+len(injected))
+	out = append(out, filtered[0])
+
+	inserted := false
+	for _, arg := range filtered[1:] {
+		if !inserted && (arg == "--" || !strings.HasPrefix(arg, "-")) {
+			out = append(out, injected...)
+			inserted = true
+		}
+		out = append(out, arg)
+	}
+	if !inserted {
+		out = append(out, injected...)
+	}
+
+	return out, nil
 }
 
 func parseOnlyFmtfixArg(arg string) (handled bool, enabled bool, err error) {

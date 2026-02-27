@@ -28,6 +28,16 @@ func TestPreprocessArgs_OnlyFmtfix(t *testing.T) {
 	if !slices.Contains(args, "-lint027=false") {
 		t.Fatalf("expected -lint027=false in args, got: %v", args)
 	}
+	targetIdx := slices.Index(args, "./...")
+	if targetIdx == -1 {
+		t.Fatalf("expected package arg in output args, got: %v", args)
+	}
+	if targetIdx == 1 {
+		t.Fatalf("expected injected flags before package arg, got: %v", args)
+	}
+	if slices.Index(args, "-fmtfix=true") > targetIdx {
+		t.Fatalf("expected -fmtfix=true before package arg, got: %v", args)
+	}
 }
 
 func TestPreprocessArgs_OnlyFmtfixFalse(t *testing.T) {
