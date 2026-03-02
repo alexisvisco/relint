@@ -1,2 +1,102 @@
 [tools]
 go = "1.26"
+
+[tasks.version]
+description = "Print latest release tag and next patch tag"
+run = '''
+set -euo pipefail
+
+latest="$(
+  git ls-remote --tags --refs origin \
+    | awk '{print $2}' \
+    | sed 's#refs/tags/##' \
+    | rg '^[vV]?[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sed 's/^V/v/' \
+    | sort -V \
+    | tail -n 1
+)"
+
+if [ -z "${latest:-}" ]; then
+  latest="v0.0.0"
+fi
+
+base="${latest#v}"
+major="$(printf '%s' "$base" | cut -d. -f1)"
+minor="$(printf '%s' "$base" | cut -d. -f2)"
+patch="$(printf '%s' "$base" | cut -d. -f3)"
+
+next="v${major}.${minor}.$((patch + 1))"
+
+printf 'latest=%s\n' "$latest"
+printf 'next=%s\n' "$next"
+'''
+
+[tasks.publish]
+description = "Bump patch tag, push, and publish a GitHub release"
+run = '''
+set -euo pipefail
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "working tree is not clean; commit or stash changes before publishing" >&2
+  exit 1
+fi
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "gh CLI is required to publish a release (install from https://cli.github.com/)" >&2
+  exit 1
+fi
+
+if ! gh auth status >/dev/null 2>&1; then
+  echo "gh is not authenticated; run: gh auth login" >&2
+  exit 1
+fi
+
+git fetch --tags origin >/dev/null 2>&1
+
+latest="$(
+  git ls-remote --tags --refs origin \
+    | awk '{print $2}' \
+    | sed 's#refs/tags/##' \
+    | rg '^[vV]?[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sed 's/^V/v/' \
+    | sort -V \
+    | tail -n 1
+)"
+
+if [ -z "${latest:-}" ]; then
+  latest="v0.0.0"
+fi
+
+base="${latest#v}"
+major="$(printf '%s' "$base" | cut -d. -f1)"
+minor="$(printf '%s' "$base" | cut -d. -f2)"
+patch="$(printf '%s' "$base" | cut -d. -f3)"
+
+next="v${major}.${minor}.$((patch + 1))"
+
+if git rev-parse "$next" >/dev/null 2>&1; then
+  echo "tag already exists locally: $next" >&2
+  exit 1
+fi
+
+if git ls-remote --tags --refs origin "$next" | rg -q "$next"; then
+  echo "tag already exists on origin: $next" >&2
+  exit 1
+fi
+
+if [ ! -f version.txt ]; then
+  echo "missing version.txt in repository root" >&2
+  exit 1
+fi
+
+printf '%s\n' "$next" > version.txt
+git add version.txt
+git commit -m "chore(release): $next"
+
+git tag -a "$next" -m "release $next"
+git push origin HEAD
+git push origin "$next"
+gh release create "$next" --verify-tag --generate-notes --title "$next"
+
+echo "published release $next"
+'''

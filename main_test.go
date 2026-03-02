@@ -69,3 +69,42 @@ func TestPreprocessArgs_InvalidOnlyFmtfixValue(t *testing.T) {
 		t.Fatal("expected error for invalid -only-fmtfix value")
 	}
 }
+
+func TestStripVersionArgs_Enabled(t *testing.T) {
+	showVersion, args, err := stripVersionArgs([]string{"relint", "-version", "./..."})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !showVersion {
+		t.Fatal("expected version flag to be enabled")
+	}
+	if slices.Contains(args, "-version") {
+		t.Fatalf("version flag should be removed from args: %v", args)
+	}
+	if !slices.Contains(args, "./...") {
+		t.Fatalf("expected package args to be preserved: %v", args)
+	}
+}
+
+func TestStripVersionArgs_Disabled(t *testing.T) {
+	showVersion, args, err := stripVersionArgs([]string{"relint", "--version=false", "./..."})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if showVersion {
+		t.Fatal("expected version flag to be disabled")
+	}
+	if slices.Contains(args, "--version=false") {
+		t.Fatalf("version flag should be removed from args: %v", args)
+	}
+	if !slices.Contains(args, "./...") {
+		t.Fatalf("expected package args to be preserved: %v", args)
+	}
+}
+
+func TestStripVersionArgs_InvalidValue(t *testing.T) {
+	_, _, err := stripVersionArgs([]string{"relint", "-version=nope"})
+	if err == nil {
+		t.Fatal("expected error for invalid -version value")
+	}
+}

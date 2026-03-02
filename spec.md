@@ -113,10 +113,13 @@ In packages whose name contains `store`, direct `return` expressions of these kn
 **LINT-022 — Handler route file naming**
 In `handler` packages, exported methods on receivers `*{Name}Handler` MUST be located in files named `{name}_{route}_handler.go` (where `{route}` is the method name in snake_case), after de-duplicating `{name}` when it is already present in `{route}` (including simple plural forms).
 
+For routes whose snake_case name is exactly the pluralized handler base (for example `AssetHandler.Assets`), `{plural}_handler.go` is allowed. `{name}_handler.go` is also accepted for compatibility.
+
 Examples:
 - `TenantHandler.Tenant` -> `tenant_handler.go`
 - `AssetHandler.ListAssets` -> `asset_list_handler.go`
 - `AssetHandler.GetAsset` -> `asset_get_handler.go`
+- `AssetHandler.Assets` -> `assets_handler.go` (also accepts `asset_handler.go`)
 
 **LINT-023 — Route Input/Output type location**
 In `handler` packages, types suffixed `Input` or `Output` are treated as route types. If a matching handler method `{Route}` exists, the type MUST be declared either:

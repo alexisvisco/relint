@@ -13,7 +13,17 @@ import (
 )
 
 func main() {
-	args, err := preprocessArgs(os.Args, all.Analyzers)
+	showVersion, args, err := stripVersionArgs(os.Args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(2)
+	}
+	if showVersion {
+		fmt.Println(binaryVersion())
+		return
+	}
+
+	args, err = preprocessArgs(args, all.Analyzers)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(2)
@@ -88,6 +98,49 @@ func parseOnlyFmtfixArg(arg string) (handled bool, enabled bool, err error) {
 		b, parseErr := strconv.ParseBool(value)
 		if parseErr != nil {
 			return false, false, fmt.Errorf("invalid value for -only-fmtfix: %q", value)
+		}
+		return true, b, nil
+	}
+
+	return false, false, nil
+}
+
+func stripVersionArgs(args []string) (showVersion bool, filtered []string, err error) {
+	if len(args) == 0 {
+		return false, args, nil
+	}
+
+	showVersion = false
+	filtered = make([]string, 0, len(args))
+	filtered = append(filtered, args[0])
+
+	for _, arg := range args[1:] {
+		handled, enabled, parseErr := parseVersionArg(arg)
+		if parseErr != nil {
+			return false, nil, parseErr
+		}
+		if handled {
+			showVersion = enabled
+			continue
+		}
+		filtered = append(filtered, arg)
+	}
+
+	return showVersion, filtered, nil
+}
+
+func parseVersionArg(arg string) (handled bool, enabled bool, err error) {
+	if arg == "-version" || arg == "--version" {
+		return true, true, nil
+	}
+
+	const shortPrefix = "-version="
+	const longPrefix = "--version="
+	if strings.HasPrefix(arg, shortPrefix) || strings.HasPrefix(arg, longPrefix) {
+		value := strings.TrimPrefix(strings.TrimPrefix(arg, shortPrefix), longPrefix)
+		b, parseErr := strconv.ParseBool(value)
+		if parseErr != nil {
+			return false, false, fmt.Errorf("invalid value for -version: %q", value)
 		}
 		return true, b, nil
 	}

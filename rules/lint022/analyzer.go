@@ -51,28 +51,48 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			return
 		}
 
-		// Compute expected file name
+		// Compute expected file names
 		// handlerName without "Handler" suffix, lowercased
 		baseName := strings.TrimSuffix(recvName, "Handler")
-		expectedFile := expectedRouteFile(baseName, methodName)
+		expectedFiles := expectedRouteFiles(baseName, methodName)
 		actualFile := analysisutil.FileBasename(pass, fn.Name.Pos())
 
-		if actualFile != expectedFile {
-			pass.Reportf(fn.Name.Pos(), "LINT-022: route handler %q on %q must be in file %q", methodName, recvName, expectedFile)
+		matched := false
+		for _, expectedFile := range expectedFiles {
+			if actualFile == expectedFile {
+				matched = true
+				break
+			}
+		}
+
+		if !matched {
+			pass.Reportf(fn.Name.Pos(), "LINT-022: route handler %q on %q must be in file %q", methodName, recvName, expectedFiles[0])
 		}
 	})
 
 	return nil, nil
 }
 
-func expectedRouteFile(handlerName, routeName string) string {
+func expectedRouteFiles(handlerName, routeName string) []string {
 	handlerSnake := toSnake(handlerName)
 	routeSnake := toSnake(routeName)
+
+	// Exact plural route names can live in plural file form (assets_handler.go),
+	// while still allowing the historical singular file form (asset_handler.go).
+	if routeSnake == pluralize(handlerSnake) {
+		pluralFile := fmt.Sprintf("%s_handler.go", routeSnake)
+		singularFile := fmt.Sprintf("%s_handler.go", handlerSnake)
+		if pluralFile == singularFile {
+			return []string{pluralFile}
+		}
+		return []string{pluralFile, singularFile}
+	}
+
 	routePart := normalizeRoutePart(handlerSnake, routeSnake)
 	if routePart == "" {
-		return fmt.Sprintf("%s_handler.go", handlerSnake)
+		return []string{fmt.Sprintf("%s_handler.go", handlerSnake)}
 	}
-	return fmt.Sprintf("%s_%s_handler.go", handlerSnake, routePart)
+	return []string{fmt.Sprintf("%s_%s_handler.go", handlerSnake, routePart)}
 }
 
 func normalizeRoutePart(handlerSnake, routeSnake string) string {
