@@ -149,3 +149,12 @@ In `model` packages, exported struct fields MUST declare a `gorm` tag attribute.
 In `model` packages, relation fields identified by `gorm` tag attributes `foreignKey`, `many2many`, or `polymorphicType` MUST be either:
 - a pointer (`*Type`), or
 - a slice of pointers (`[]*Type`).
+
+**LINT-030 — Protected roots must not import sibling roots**
+Packages under protected module roots (default: `core`) MUST NOT import packages from sibling roots in the same module.
+
+The protected roots are configurable via `-lint030.roots` as a comma-separated list.
+
+Example in module `daiteo.io`:
+- `daiteo.io/core/pagination` importing `daiteo.io/core/model` is allowed.
+- `daiteo.io/core/pagination` importing `daiteo.io/smarthubserver/types` is flagged.

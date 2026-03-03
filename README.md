@@ -67,6 +67,7 @@ Or run the built binary:
 - `LINT-027` No `json` tags in `model` package structs
 - `LINT-028` Exported model fields require `gorm` tag in package `model`
 - `LINT-029` Model relation fields must be `*Type` or `[]*Type` in package `model`
+- `LINT-030` Protected roots (default `core`) must not import sibling roots
 
 See [spec.md](./spec.md) for full rule definitions.
 
@@ -78,6 +79,7 @@ Rule-specific options are exposed as analyzer flags:
 - `-lint007.exceptions` (default: `environment.Environment`)
 - `-lint008.excluded-suffixes` (default: `_test`)
 - `-lint009.exceptions` (default: `types`)
+- `-lint030.roots` (default: `core`)
 
 Examples:
 
@@ -87,6 +89,7 @@ Examples:
   -lint007.exceptions="environment.Environment,foo.Status" \
   -lint008.excluded-suffixes="_test,_v2" \
   -lint009.exceptions="types,models" \
+  -lint030.roots="core,shared" \
   ./...
 ```
 
