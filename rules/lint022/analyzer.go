@@ -1,6 +1,7 @@
 package lint022
 
 import (
+	"slices"
 	"fmt"
 	"go/ast"
 	"strings"
@@ -15,13 +16,13 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint022",
-	Doc:      "LINT-022: handler route methods must be in route handler files",
+	Doc:      "LINT-022: route methods in module-scoped *handler packages must be in {route}.go files",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() != "handler" {
+	if !analysisutil.IsHandlerPackage(pass.Pkg.Name()) || pass.Pkg.Name() == "handler" {
 		return nil, nil
 	}
 
@@ -57,13 +58,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		expectedFiles := expectedRouteFiles(baseName, methodName)
 		actualFile := analysisutil.FileBasename(pass, fn.Name.Pos())
 
-		matched := false
-		for _, expectedFile := range expectedFiles {
-			if actualFile == expectedFile {
-				matched = true
-				break
-			}
-		}
+		matched := slices.Contains(expectedFiles, actualFile)
 
 		if !matched {
 			pass.Reportf(fn.Name.Pos(), "LINT-022: route handler %q on %q must be in file %q", methodName, recvName, expectedFiles[0])
@@ -76,23 +71,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 func expectedRouteFiles(handlerName, routeName string) []string {
 	handlerSnake := toSnake(handlerName)
 	routeSnake := toSnake(routeName)
-
-	// Exact plural route names can live in plural file form (assets_handler.go),
-	// while still allowing the historical singular file form (asset_handler.go).
-	if routeSnake == pluralize(handlerSnake) {
-		pluralFile := fmt.Sprintf("%s_handler.go", routeSnake)
-		singularFile := fmt.Sprintf("%s_handler.go", handlerSnake)
-		if pluralFile == singularFile {
-			return []string{pluralFile}
-		}
-		return []string{pluralFile, singularFile}
-	}
-
 	routePart := normalizeRoutePart(handlerSnake, routeSnake)
-	if routePart == "" {
-		return []string{fmt.Sprintf("%s_handler.go", handlerSnake)}
+	if routePart != "" {
+		return []string{fmt.Sprintf("%s.go", routePart)}
 	}
-	return []string{fmt.Sprintf("%s_%s_handler.go", handlerSnake, routePart)}
+	return []string{fmt.Sprintf("%s.go", routeSnake)}
 }
 
 func normalizeRoutePart(handlerSnake, routeSnake string) string {

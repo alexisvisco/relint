@@ -4,4 +4,16 @@ type (
 	Foo struct{}
 
 	Bar struct{}
-) // want `FMT-001: consecutive type declarations should be merged into a type block`
+)
+
+const (
+	A = "a"
+
+	B = "b"
+)
+
+var (
+	X = 1
+
+	Y = 2
+)

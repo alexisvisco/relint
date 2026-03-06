@@ -16,7 +16,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "fmtfix",
-	Doc:      "FMTFIX: merge consecutive type declarations, normalize type-block spacing, and reorder top-level declarations (type, const, var, func)",
+	Doc:      "FMTFIX: merge consecutive type/const/var declarations, normalize type-block spacing, and reorder top-level declarations (type, const, var, func)",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
@@ -31,12 +31,13 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-// declItem is either a group of consecutive single type decls (to be merged)
-// or a single other decl (non-type, or already-grouped type block).
+// declItem is either a group of consecutive single type/const/var decls (to be merged)
+// or a single other decl (non-grouped declaration).
 type declItem struct {
-	order     int
-	typeDecls []*ast.GenDecl // non-nil: consecutive single type decls
-	decl      ast.Decl       // non-nil: everything else
+	order      int
+	groupTok   token.Token
+	groupDecls []*ast.GenDecl // non-nil: consecutive single type/const/var decls
+	decl       ast.Decl       // non-nil: everything else
 }
 
 func declOrder(d ast.Decl) int {
@@ -71,18 +72,18 @@ func declStart(d ast.Decl) token.Pos {
 	return d.Pos()
 }
 
-// buildDeclItems groups consecutive single (non-parenthesised) type decls together;
+// buildDeclItems groups consecutive single (non-parenthesised) type/const/var decls together;
 // everything else is an individual item. Import decls must be excluded before calling.
 func buildDeclItems(decls []ast.Decl) []declItem {
 	var items []declItem
 	i := 0
 	for i < len(decls) {
 		gd, ok := decls[i].(*ast.GenDecl)
-		if ok && gd.Tok == token.TYPE && gd.Lparen == token.NoPos {
+		if ok && isMergeableGenDecl(gd) {
 			j := i + 1
 			for j < len(decls) {
 				next, ok2 := decls[j].(*ast.GenDecl)
-				if !ok2 || next.Tok != token.TYPE || next.Lparen != token.NoPos {
+				if !ok2 || !isMergeableGenDecl(next) || next.Tok != gd.Tok {
 					break
 				}
 				j++
@@ -91,7 +92,7 @@ func buildDeclItems(decls []ast.Decl) []declItem {
 			for k := range group {
 				group[k] = decls[i+k].(*ast.GenDecl)
 			}
-			items = append(items, declItem{order: 0, typeDecls: group})
+			items = append(items, declItem{order: declOrder(gd), groupTok: gd.Tok, groupDecls: group})
 			i = j
 		} else {
 			items = append(items, declItem{order: declOrder(decls[i]), decl: decls[i]})
@@ -101,12 +102,15 @@ func buildDeclItems(decls []ast.Decl) []declItem {
 	return items
 }
 
-// mergeAdjacentTypeGroups coalesces type groups that end up adjacent after sorting.
-func mergeAdjacentTypeGroups(items []declItem) []declItem {
+// mergeAdjacentGroups coalesces same-token groups that end up adjacent after sorting.
+func mergeAdjacentGroups(items []declItem) []declItem {
 	merged := make([]declItem, 0, len(items))
 	for _, item := range items {
-		if item.typeDecls != nil && len(merged) > 0 && merged[len(merged)-1].typeDecls != nil {
-			merged[len(merged)-1].typeDecls = append(merged[len(merged)-1].typeDecls, item.typeDecls...)
+		if item.groupDecls != nil &&
+			len(merged) > 0 &&
+			merged[len(merged)-1].groupDecls != nil &&
+			merged[len(merged)-1].groupTok == item.groupTok {
+			merged[len(merged)-1].groupDecls = append(merged[len(merged)-1].groupDecls, item.groupDecls...)
 		} else {
 			merged = append(merged, item)
 		}
@@ -134,7 +138,7 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 
 	needsMerge := false
 	for _, item := range items {
-		if len(item.typeDecls) > 1 {
+		if len(item.groupDecls) > 1 {
 			needsMerge = true
 			break
 		}
@@ -158,13 +162,13 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 		return sorted[i].order < sorted[j].order
 	})
 
-	// After reordering, type groups that are now adjacent should be merged too.
-	sorted = mergeAdjacentTypeGroups(sorted)
+	// After reordering, groups that are now adjacent should be merged too.
+	sorted = mergeAdjacentGroups(sorted)
 
 	// Re-check: if nothing actually changed, skip.
 	needsMerge = false
 	for _, item := range sorted {
-		if len(item.typeDecls) > 1 {
+		if len(item.groupDecls) > 1 {
 			needsMerge = true
 			break
 		}
@@ -184,7 +188,7 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 
 	pass.Report(analysis.Diagnostic{
 		Pos:     decls[0].Pos(),
-		Message: "FMTFIX: apply format fixes (merge type blocks, reorder declarations)",
+		Message: "FMTFIX: apply format fixes (merge declaration blocks, reorder declarations)",
 		SuggestedFixes: []analysis.SuggestedFix{{
 			Message: "Apply format fixes",
 			TextEdits: []analysis.TextEdit{{
@@ -223,12 +227,12 @@ func generateText(pass *analysis.Pass, file *ast.File, items []declItem) []byte 
 			if err := format.Node(&result, pass.Fset, item.decl); err != nil {
 				return nil
 			}
-		} else if len(item.typeDecls) == 1 {
-			if err := format.Node(&result, pass.Fset, item.typeDecls[0]); err != nil {
+		} else if len(item.groupDecls) == 1 {
+			if err := format.Node(&result, pass.Fset, item.groupDecls[0]); err != nil {
 				return nil
 			}
 		} else {
-			merged := buildMergedTypeBlock(pass, item.typeDecls)
+			merged := buildMergedGenDeclBlock(pass, item.groupTok, item.groupDecls)
 			if merged == nil {
 				return nil
 			}
@@ -250,11 +254,13 @@ func formatDeclWithComments(pass *analysis.Pass, commentMap ast.CommentMap, decl
 	return buf.Bytes()
 }
 
-// buildMergedTypeBlock produces a `type ( ... )` block from a slice of single-spec GenDecls.
+// buildMergedGenDeclBlock produces a `{type|const|var} ( ... )` block from a slice
+// of single-spec GenDecls.
 // It preserves each spec's doc comment and uses format.Node for correct indentation.
-func buildMergedTypeBlock(pass *analysis.Pass, decls []*ast.GenDecl) []byte {
+func buildMergedGenDeclBlock(pass *analysis.Pass, tok token.Token, decls []*ast.GenDecl) []byte {
 	var buf bytes.Buffer
-	buf.WriteString("type (\n")
+	buf.WriteString(tok.String())
+	buf.WriteString(" (\n")
 	for i, d := range decls {
 		// Include the GenDecl doc comment (e.g. // Foo is ...) indented by one tab.
 		if d.Doc != nil {
@@ -264,10 +270,10 @@ func buildMergedTypeBlock(pass *analysis.Pass, decls []*ast.GenDecl) []byte {
 				buf.WriteString("\n")
 			}
 		}
-		// Format the TypeSpec and indent every line by one tab.
-		ts := d.Specs[0].(*ast.TypeSpec)
+		// Format the single spec and indent every line by one tab.
+		spec := d.Specs[0]
 		var specBuf bytes.Buffer
-		if err := format.Node(&specBuf, pass.Fset, ts); err != nil {
+		if err := format.Node(&specBuf, pass.Fset, spec); err != nil {
 			return nil
 		}
 		lines := strings.Split(specBuf.String(), "\n")
@@ -285,6 +291,13 @@ func buildMergedTypeBlock(pass *analysis.Pass, decls []*ast.GenDecl) []byte {
 	}
 	buf.WriteString(")")
 	return buf.Bytes()
+}
+
+func isMergeableGenDecl(gd *ast.GenDecl) bool {
+	if gd == nil || gd.Lparen != token.NoPos {
+		return false
+	}
+	return gd.Tok == token.TYPE || gd.Tok == token.CONST || gd.Tok == token.VAR
 }
 
 // buildTypeBlockWithSpacing re-renders an existing type (...) block

@@ -11,7 +11,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "fmt001",
-	Doc:      "FMT-001: consecutive type declarations must be merged into a type block",
+	Doc:      "FMT-001: consecutive type/const/var declarations must be merged into declaration blocks",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
@@ -31,7 +31,7 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 	i := 0
 	for i < len(decls) {
 		gd, ok := decls[i].(*ast.GenDecl)
-		if !ok || gd.Tok != token.TYPE || gd.Lparen != token.NoPos {
+		if !ok || !isMergeableGenDecl(gd) {
 			i++
 			continue
 		}
@@ -40,7 +40,7 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 		j := i + 1
 		for j < len(decls) {
 			next, ok := decls[j].(*ast.GenDecl)
-			if !ok || next.Tok != token.TYPE || next.Lparen != token.NoPos {
+			if !ok || !isMergeableGenDecl(next) || next.Tok != gd.Tok {
 				break
 			}
 			j++
@@ -55,8 +55,15 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 		pass.Report(analysis.Diagnostic{
 			Pos:     run[1].Pos(),
 			End:     run[len(run)-1].End(),
-			Message: "FMT-001: consecutive type declarations should be merged into a type block",
+			Message: "FMT-001: consecutive declarations should be merged into a declaration block",
 		})
 		i = j
 	}
+}
+
+func isMergeableGenDecl(gd *ast.GenDecl) bool {
+	if gd == nil || gd.Lparen != token.NoPos {
+		return false
+	}
+	return gd.Tok == token.TYPE || gd.Tok == token.CONST || gd.Tok == token.VAR
 }

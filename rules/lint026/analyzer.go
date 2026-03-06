@@ -11,13 +11,13 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint026",
-	Doc:      "LINT-026: body-only helper structs must use body prefix and matching Input/Output suffix",
+	Doc:      "LINT-026: body-only helper structs in packages ending with handler must use body prefix and matching Input/Output suffix",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() != "handler" {
+	if !analysisutil.IsHandlerPackage(pass.Pkg.Name()) {
 		return nil, nil
 	}
 

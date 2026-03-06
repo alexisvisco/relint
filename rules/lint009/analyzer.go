@@ -24,7 +24,7 @@ func init() {
 	Analyzer.Flags.StringVar(
 		&exceptionsFlag,
 		"exceptions",
-		"types",
+		"types,handlertypes",
 		"comma-separated list of package names exempt from the plural check",
 	)
 }

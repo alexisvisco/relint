@@ -7,17 +7,19 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/alexisvisco/relint/analysisutil"
 )
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint018",
-	Doc:      "LINT-018: middleware functions outside handler package must be named Middleware",
+	Doc:      "LINT-018: middleware functions outside packages ending with handler must be named Middleware",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() == "handler" {
+	if analysisutil.IsHandlerPackage(pass.Pkg.Name()) {
 		return nil, nil
 	}
 
@@ -34,7 +36,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		if !isMiddlewareFunc(pass, fn) {
 			return
 		}
-		pass.Reportf(fn.Name.Pos(), "LINT-018: middleware function %q outside handler package must be named \"Middleware\"", fn.Name.Name)
+		pass.Reportf(fn.Name.Pos(), "LINT-018: middleware function %q outside packages ending with handler must be named \"Middleware\"", fn.Name.Name)
 	})
 
 	return nil, nil

@@ -47,6 +47,13 @@ func IsInPackage(pass *analysis.Pass, pkgName string) bool {
 	return pass.Pkg.Name() == pkgName
 }
 
+// IsHandlerPackage reports whether pkgName denotes a handler layer package.
+// Handler packages are either the historical "handler" package or
+// module-scoped packages like "authhandler".
+func IsHandlerPackage(pkgName string) bool {
+	return strings.HasSuffix(pkgName, "handler")
+}
+
 // FileBasename returns the base filename (without directory) for a given Pos.
 func FileBasename(pass *analysis.Pass, pos token.Pos) string {
 	return filepath.Base(pass.Fset.File(pos).Name())

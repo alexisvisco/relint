@@ -15,7 +15,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint024",
-	Doc:      "LINT-024: body types in handler files must be named {Name}BodyInput or {Name}BodyOutput",
+	Doc:      "LINT-024: body types in packages ending with handler must be named {Name}BodyInput or {Name}BodyOutput",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
@@ -24,11 +24,12 @@ var Analyzer = &analysis.Analyzer{
 var validBodyPattern = regexp.MustCompile(`^[A-Z][a-zA-Z0-9]*Body(Input|Output)$`)
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() != "handler" {
+	if !analysisutil.IsHandlerPackage(pass.Pkg.Name()) {
 		return nil, nil
 	}
 
 	bodyUsage := analysisutil.AnalyzeBodyTypeUsage(pass)
+	routeFiles := collectRouteFiles(pass)
 	insp := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
 	insp.Preorder([]ast.Node{(*ast.GenDecl)(nil)}, func(n ast.Node) {
@@ -52,7 +53,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 			// Only check in non-route files (files not ending with _handler.go)
 			filename := analysisutil.FileBasename(pass, ts.Name.Pos())
-			if strings.HasSuffix(filename, "_handler.go") {
+			if strings.HasSuffix(filename, "_handler.go") || routeFiles[filename] {
 				continue
 			}
 
@@ -63,4 +64,29 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	})
 
 	return nil, nil
+}
+
+func collectRouteFiles(pass *analysis.Pass) map[string]bool {
+	routeFiles := make(map[string]bool)
+	for _, f := range pass.Files {
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Recv == nil || len(fn.Recv.List) == 0 {
+				continue
+			}
+			if !fn.Name.IsExported() {
+				continue
+			}
+			recv := fn.Recv.List[0].Type
+			if star, ok := recv.(*ast.StarExpr); ok {
+				recv = star.X
+			}
+			recvIdent, ok := recv.(*ast.Ident)
+			if !ok || !strings.HasSuffix(recvIdent.Name, "Handler") {
+				continue
+			}
+			routeFiles[analysisutil.FileBasename(pass, fn.Name.Pos())] = true
+		}
+	}
+	return routeFiles
 }

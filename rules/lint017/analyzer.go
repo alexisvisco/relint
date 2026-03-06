@@ -15,13 +15,13 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint017",
-	Doc:      "LINT-017: Require* middleware in handler package must be in require_{name}.go",
+	Doc:      "LINT-017: Require* middleware in packages ending with handler must be in require_{name}.go",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() != "handler" {
+	if !analysisutil.IsHandlerPackage(pass.Pkg.Name()) {
 		return nil, nil
 	}
 

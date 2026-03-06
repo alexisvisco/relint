@@ -6,8 +6,8 @@ These are purely stylistic and can be deterministically rewritten without semant
 
 ---
 
-**FMT-001 — Type declaration merging**
-Multiple consecutive single `type` declarations MUST be merged into a single `type (...)` block.
+**FMT-001 — Declaration merging**
+Multiple consecutive single `type`, `const`, or `var` declarations MUST be merged into a corresponding declaration block.
 
 **FMT-002 — File declaration order**
 Declarations within a file MUST follow the order: `type`, `const`, `var`, `func`. A formatter can reorder top-level declaration groups.
@@ -65,7 +65,7 @@ Package-name suffixes can be excluded from this check via configuration. Default
 Package names that are pluralized MUST NOT be used.
 
 The rule detects plural names generically (for example names ending with `s`), with configurable package-name exceptions.
-Default configured exception: `types`.
+Default configured exceptions: `types`, `handlertypes`.
 
 **LINT-010 — Interface location**
 Only interfaces suffixed with `Service` or `Store` MUST be declared in a `types` package (i.e. a file whose package is `types`). `Service`/`Store` interface declarations found outside of a `types` package MUST be flagged. Other interfaces are allowed outside `types`.
@@ -88,18 +88,19 @@ Files in packages whose name contains `store`, `service`, or `handler` (excludin
 If a file contains more than one such exported layer method, it is flagged. Exported non-method functions are ignored by this rule.
 
 **LINT-016 — Middleware naming: Inject***
-In `handler` packages, any function named `Inject{Name}` or `inject{Name}` (with non-empty `{Name}`) MUST be declared in `inject_{name}.go`. Violations are flagged.
+In packages whose names end with `handler`, any function named `Inject{Name}` or `inject{Name}` (with non-empty `{Name}`) MUST be declared in `inject_{name}.go`. Violations are flagged.
 
 **LINT-017 — Middleware naming: Require***
-In `handler` packages, any function named `Require{Name}` or `require{Name}` (with non-empty `{Name}`) MUST be declared in `require_{name}.go`. Violations are flagged.
+In packages whose names end with `handler`, any function named `Require{Name}` or `require{Name}` (with non-empty `{Name}`) MUST be declared in `require_{name}.go`. Violations are flagged.
 
 **LINT-018 — Middleware naming outside handler**
-Outside `handler` packages, exported functions with middleware signature `func(http.Handler) http.Handler` MUST be named `Middleware`. Non-matching names are flagged.
+Outside packages whose names end with `handler`, exported functions with middleware signature `func(http.Handler) http.Handler` MUST be named `Middleware`. Non-matching names are flagged.
 
-**LINT-019 — fx_module.go presence**
-Packages whose names end with `store`, `service`, or `handler` MUST contain an `fx_module.go` file. Absence is flagged.
-
-If present, `fx_module.go` MUST declare an exported `FxModule` variable.
+**LINT-019 — FxModule file location**
+In packages whose names end with `store`, `service`, or `handler`, if a top-level variable named `FxModule` is declared, it MUST be located in:
+- `store.go` for `*store` packages,
+- `service.go` for `*service` packages,
+- `handler.go` for `*handler` packages.
 
 **LINT-020 — Error variable location (types package)**
 In `types` packages only, error variables prefixed with `Err` MUST be declared in `errors.go`. `Err*` variables declared in other files within `types` MUST be flagged. Non-`types` packages are excluded from this rule.
@@ -111,31 +112,26 @@ In packages whose name contains `store`, direct `return` expressions of these kn
 - `gorm.ErrRecordNotFound`
 
 **LINT-022 — Handler route file naming**
-In `handler` packages, exported methods on receivers `*{Name}Handler` MUST be located in files named `{name}_{route}_handler.go` (where `{route}` is the method name in snake_case), after de-duplicating `{name}` when it is already present in `{route}` (including simple plural forms).
-
-For routes whose snake_case name is exactly the pluralized handler base (for example `AssetHandler.Assets`), `{plural}_handler.go` is allowed. `{name}_handler.go` is also accepted for compatibility.
+In module-scoped handler packages (names ending with `handler`, excluding package `handler`), exported methods on receivers `*{Name}Handler` MUST be located in `{route}.go` files, where `{route}` is the method name in snake_case after de-duplicating `{name}` when it is already present in `{route}` (including simple plural forms).
 
 Examples:
-- `TenantHandler.Tenant` -> `tenant_handler.go`
-- `AssetHandler.ListAssets` -> `asset_list_handler.go`
-- `AssetHandler.GetAsset` -> `asset_get_handler.go`
-- `AssetHandler.Assets` -> `assets_handler.go` (also accepts `asset_handler.go`)
+- `assethandler`: `AssetHandler.ListAssets` -> `list.go`
+- `assethandler`: `AssetHandler.GetAsset` -> `get.go`
+- `authhandler`: `AuthHandler.Login` -> `login.go`
 
 **LINT-023 — Route Input/Output type location**
-In `handler` packages, types suffixed `Input` or `Output` are treated as route types. If a matching handler method `{Route}` exists, the type MUST be declared either:
-- in the corresponding route file determined by LINT-022 naming (including de-duplication), or
-- in the shared handler file (`{name}.go`).
+In module-scoped handler packages (names ending with `handler`, excluding package `handler`), route wrapper types suffixed `Input` or `Output` MUST be declared in the route file determined by LINT-022 (`{route}.go` after de-duplication).
 
-Otherwise it is ignored by this rule.
+Shared payload structs SHOULD be declared in package `handlertypes`.
 
 **LINT-024 — Shared body type naming**
-In `handler` packages, for files not ending in `_handler.go`, type names containing `Body` MUST match `{Name}BodyInput` or `{Name}BodyOutput`. Non-matching names are flagged.
+In packages whose names end with `handler`, for files that are not route files, type names containing `Body` MUST match `{Name}BodyInput` or `{Name}BodyOutput`. Non-matching names are flagged.
 
 **LINT-025 — Handler struct file location**
-In `handler` packages, struct types suffixed `Handler` MUST be declared in `{name}.go` (for example `TenantHandler` in `tenant.go`).
+In module-scoped handler packages (names ending with `handler`, excluding package `handler`), struct types suffixed `Handler` MUST be declared in `handler.go`.
 
 **LINT-026 — Body-only helper struct naming**
-In `handler` packages, struct types that are referenced only by body structs (`*BodyInput`/`*BodyOutput`) MUST:
+In packages whose names end with `handler`, struct types that are referenced only by body structs (`*BodyInput`/`*BodyOutput`) MUST:
 - start with the parent body prefix (parent name without `Input`/`Output`), and
 - end with the corresponding parent suffix (`Input` or `Output`).
 
@@ -158,3 +154,19 @@ The protected roots are configurable via `-lint030.roots` as a comma-separated l
 Example in module `daiteo.io`:
 - `daiteo.io/core/pagination` importing `daiteo.io/core/model` is allowed.
 - `daiteo.io/core/pagination` importing `daiteo.io/smarthubserver/types` is flagged.
+
+**LINT-031 — huma path params lowerCamelCase**
+For `huma` route registrations (`huma.Get`, `huma.Post`, `huma.Put`, `huma.Patch`, `huma.Delete`, `huma.Head`, `huma.Options`) using a string-literal path, path parameters inside `{...}` MUST be `lowerCamelCase`.
+
+Struct field tags using `path:"..."` MUST also use `lowerCamelCase`.
+
+Examples:
+- `/api/objects/{objectId}/definition` is valid.
+- `/api/objects/{object_id}/definition` is flagged.
+- `` `path:"invitationToken"` `` is valid.
+- `` `path:"invitation_token"` `` is flagged.
+
+**LINT-032 — Layer constructor naming and uniqueness**
+In packages whose names end with `store`, `service`, or `<module>handler` (excluding package `handler`), exported top-level constructor functions prefixed with `New` MUST follow these rules:
+- the constructor name MUST be exactly `New` (for example `NewUserService` is flagged),
+- at most one exported `New*` constructor may be declared in the package.

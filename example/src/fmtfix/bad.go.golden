@@ -4,10 +4,22 @@ import "fmt"
 
 type (
 	// Bar is a type.
-	Bar struct{}
+	Bar struct{} // want `FMTFIX: apply format fixes \(merge declaration blocks, reorder declarations\)`
 
 	// Baz is a type.
 	Baz struct{}
+)
+
+const (
+	Alpha = "a"
+
+	Beta = "b"
+)
+
+var (
+	One = 1
+
+	Two = 2
 )
 
 // Foo does something.

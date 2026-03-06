@@ -16,131 +16,112 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint023",
-	Doc:      "LINT-023: Route Input/Output types must be in their route handler file",
+	Doc:      "LINT-023: route Input/Output types in module-scoped *handler packages must be in {route}.go",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() != "handler" {
+	if !analysisutil.IsHandlerPackage(pass.Pkg.Name()) || pass.Pkg.Name() == "handler" {
 		return nil, nil
 	}
 
 	insp := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-
 	insp.Preorder([]ast.Node{(*ast.GenDecl)(nil)}, func(n ast.Node) {
 		gd := n.(*ast.GenDecl)
 		if gd.Tok != token.TYPE {
 			return
 		}
+
 		for _, spec := range gd.Specs {
 			ts, ok := spec.(*ast.TypeSpec)
 			if !ok {
 				continue
 			}
+
 			name := ts.Name.Name
-			// Check if name ends with Input or Output (route-specific types)
-			if !strings.HasSuffix(name, "Input") && !strings.HasSuffix(name, "Output") {
+			routeName, ok := routeNameFromType(name)
+			if !ok {
 				continue
 			}
 
-			// Determine the route name from type name
-			// e.g. LoginInput -> Login, RegisterOutput -> Register
-			var routeName string
-			if strings.HasSuffix(name, "Input") {
-				routeName = strings.TrimSuffix(name, "Input")
-			} else {
-				routeName = strings.TrimSuffix(name, "Output")
-			}
-
-			if routeName == "" {
+			expectedFiles := findExpectedRouteFiles(pass, routeName)
+			if len(expectedFiles) == 0 {
 				continue
 			}
 
-			// Find possible handler name patterns by looking at methods in the package
-			// For now, we need to determine the struct name
-			// LoginInput suggests it belongs to *XHandler.Login → x_login_handler.go
-			// We look for any *XHandler struct that has a Login method
-			expectedFiles := findExpectedFiles(pass, routeName)
 			actualFile := analysisutil.FileBasename(pass, ts.Name.Pos())
-
-			// If actual file matches none of the expected files, flag
 			matched := false
-			for _, ef := range expectedFiles {
-				if actualFile == ef {
+			for _, expected := range expectedFiles {
+				if actualFile == expected {
 					matched = true
 					break
 				}
 			}
-
-			if !matched && len(expectedFiles) > 0 {
-				pass.Reportf(ts.Name.Pos(), "LINT-023: type %q must be declared in route file %q", name, expectedFiles[0])
+			if matched {
+				continue
 			}
+
+			pass.Reportf(ts.Name.Pos(), "LINT-023: type %q must be declared in route file %q", name, expectedFiles[0])
 		}
 	})
 
 	return nil, nil
 }
 
-func findExpectedFiles(pass *analysis.Pass, routeName string) []string {
-	var result []string
+func routeNameFromType(typeName string) (string, bool) {
+	if strings.HasSuffix(typeName, "Input") {
+		routeName := strings.TrimSuffix(typeName, "Input")
+		return routeName, routeName != ""
+	}
+	if strings.HasSuffix(typeName, "Output") {
+		routeName := strings.TrimSuffix(typeName, "Output")
+		return routeName, routeName != ""
+	}
+	return "", false
+}
+
+func findExpectedRouteFiles(pass *analysis.Pass, routeName string) []string {
 	seen := map[string]bool{}
+	var out []string
 	for _, f := range pass.Files {
 		for _, decl := range f.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || fn.Recv == nil || len(fn.Recv.List) == 0 {
 				continue
 			}
-			if fn.Name.Name != routeName {
+			if !fn.Name.IsExported() || fn.Name.Name != routeName {
 				continue
 			}
+
 			recv := fn.Recv.List[0].Type
 			if star, ok := recv.(*ast.StarExpr); ok {
 				recv = star.X
 			}
 			recvIdent, ok := recv.(*ast.Ident)
-			if !ok {
+			if !ok || !strings.HasSuffix(recvIdent.Name, "Handler") {
 				continue
 			}
+
 			handlerName := strings.TrimSuffix(recvIdent.Name, "Handler")
-			for _, routeFile := range expectedRouteFiles(handlerName, routeName) {
-				if seen[routeFile] {
-					continue
-				}
-				result = append(result, routeFile)
+			routeFile := expectedRouteFile(handlerName, routeName)
+			if !seen[routeFile] {
+				out = append(out, routeFile)
 				seen[routeFile] = true
 			}
-			// Also allow shared handler file (e.g. auth.go, tenant.go).
-			sharedFile := fmt.Sprintf("%s.go", toSnake(handlerName))
-			if !seen[sharedFile] {
-				result = append(result, sharedFile)
-				seen[sharedFile] = true
-			}
 		}
 	}
-	return result
+	return out
 }
 
-func expectedRouteFiles(handlerName, routeName string) []string {
+func expectedRouteFile(handlerName, routeName string) string {
 	handlerSnake := toSnake(handlerName)
 	routeSnake := toSnake(routeName)
-
-	// Exact plural route names can live in plural file form (assets_handler.go),
-	// while still allowing the historical singular file form (asset_handler.go).
-	if routeSnake == pluralize(handlerSnake) {
-		pluralFile := fmt.Sprintf("%s_handler.go", routeSnake)
-		singularFile := fmt.Sprintf("%s_handler.go", handlerSnake)
-		if pluralFile == singularFile {
-			return []string{pluralFile}
-		}
-		return []string{pluralFile, singularFile}
-	}
-
 	routePart := normalizeRoutePart(handlerSnake, routeSnake)
-	if routePart == "" {
-		return []string{fmt.Sprintf("%s_handler.go", handlerSnake)}
+	if routePart != "" {
+		return fmt.Sprintf("%s.go", routePart)
 	}
-	return []string{fmt.Sprintf("%s_%s_handler.go", handlerSnake, routePart)}
+	return fmt.Sprintf("%s.go", routeSnake)
 }
 
 func normalizeRoutePart(handlerSnake, routeSnake string) string {

@@ -29,7 +29,7 @@ Or run the built binary:
 
 ### Formatter rules
 
-- `FMT-001` Type declaration merging
+- `FMT-001` Declaration merging (`type`/`const`/`var`)
 - `FMT-002` File declaration order
 - `FMT-003` Function body spacing
 - `FMT-004` Interface method spacing
@@ -53,21 +53,23 @@ Or run the built binary:
 - `LINT-013` Store struct interface assertion
 - `LINT-014` Service struct interface assertion
 - `LINT-015` One exported layer method per store/service/handler file
-- `LINT-016` `Inject*`/`inject*` middleware file naming in `handler`
-- `LINT-017` `Require*`/`require*` middleware file naming in `handler`
-- `LINT-018` Middleware naming outside `handler`
-- `LINT-019` `fx_module.go` presence + exported `FxModule`
+- `LINT-016` `Inject*`/`inject*` middleware file naming in `*handler` packages
+- `LINT-017` `Require*`/`require*` middleware file naming in `*handler` packages
+- `LINT-018` Middleware naming outside `*handler` packages
+- `LINT-019` `FxModule` must be in `store.go` / `service.go` / `handler.go`
 - `LINT-020` `Err*` location in `types/errors.go`
 - `LINT-021` Store `RecordNotFound` sentinel return
 - `LINT-022` Handler route method file naming
-- `LINT-023` Route `Input`/`Output` type location
-- `LINT-024` Shared body type naming in `handler`
+- `LINT-023` Route `Input`/`Output` type location in module-scoped `*handler` packages
+- `LINT-024` Shared body type naming in `*handler` packages
 - `LINT-025` Handler struct file location
 - `LINT-026` Body-only helper struct naming
 - `LINT-027` No `json` tags in `model` package structs
 - `LINT-028` Exported model fields require `gorm` tag in package `model`
 - `LINT-029` Model relation fields must be `*Type` or `[]*Type` in package `model`
 - `LINT-030` Protected roots (default `core`) must not import sibling roots
+- `LINT-031` `huma` path params must be `lowerCamelCase`
+- `LINT-032` layer constructors must expose a single `New`
 
 See [spec.md](./spec.md) for full rule definitions.
 
@@ -78,7 +80,7 @@ Rule-specific options are exposed as analyzer flags:
 - `-lint003.dot-notation` (default: empty)
 - `-lint007.exceptions` (default: `environment.Environment`)
 - `-lint008.excluded-suffixes` (default: `_test`)
-- `-lint009.exceptions` (default: `types`)
+- `-lint009.exceptions` (default: `types,handlertypes`)
 - `-lint030.roots` (default: `core`)
 
 Examples:

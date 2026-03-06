@@ -1,11 +1,9 @@
 package lint025
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"strings"
-	"unicode"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -16,13 +14,13 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint025",
-	Doc:      "LINT-025: handler structs must be declared in {name}.go",
+	Doc:      "LINT-025: handler structs in module-scoped *handler packages must be declared in handler.go",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() != "handler" {
+	if !analysisutil.IsHandlerPackage(pass.Pkg.Name()) || pass.Pkg.Name() == "handler" {
 		return nil, nil
 	}
 
@@ -45,8 +43,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				continue
 			}
 
-			baseName := strings.TrimSuffix(name, "Handler")
-			expectedFile := fmt.Sprintf("%s.go", toSnake(baseName))
+			expectedFile := "handler.go"
 			actualFile := analysisutil.FileBasename(pass, ts.Name.Pos())
 			if actualFile != expectedFile {
 				pass.Reportf(ts.Name.Pos(), "LINT-025: handler struct %q must be declared in file %q", name, expectedFile)
@@ -55,15 +52,4 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	})
 
 	return nil, nil
-}
-
-func toSnake(s string) string {
-	var result []rune
-	for i, r := range s {
-		if unicode.IsUpper(r) && i > 0 {
-			result = append(result, '_')
-		}
-		result = append(result, unicode.ToLower(r))
-	}
-	return string(result)
 }
