@@ -15,12 +15,12 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint024",
-	Doc:      "LINT-024: body types in packages ending with handler must be named {Name}BodyInput or {Name}BodyOutput",
+	Doc:      "LINT-024: body helper types in packages ending with handler must be named {Name}BodyInput or {Name}BodyOutput",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
-// validBodyPattern matches XBodyInput or XBodyOutput
+// validBodyPattern matches explicit body helper names like XBodyInput or XBodyOutput
 var validBodyPattern = regexp.MustCompile(`^[A-Z][a-zA-Z0-9]*Body(Input|Output)$`)
 
 func run(pass *analysis.Pass) (interface{}, error) {

@@ -122,10 +122,10 @@ Examples:
 **LINT-023 — Route Input/Output type location**
 In module-scoped handler packages (names ending with `handler`, excluding package `handler`), route wrapper types suffixed `Input` or `Output` MUST be declared in the route file determined by LINT-022 (`{route}.go` after de-duplication).
 
-Shared payload structs SHOULD be declared in package `handlertypes`.
+Shared payload structs SHOULD be declared in package `handlertypes` and SHOULD use descriptive names such as `Tenant`, `User`, or `InvitationToken` rather than `*BodyOutput`.
 
 **LINT-024 — Shared body type naming**
-In packages whose names end with `handler`, for files that are not route files, type names containing `Body` MUST match `{Name}BodyInput` or `{Name}BodyOutput`. Non-matching names are flagged.
+In packages whose names end with `handler`, for files that are not route files, explicit body helper type names containing `Body` MUST match `{Name}BodyInput` or `{Name}BodyOutput`. Non-matching names are flagged.
 
 **LINT-025 — Handler struct file location**
 In module-scoped handler packages (names ending with `handler`, excluding package `handler`), struct types suffixed `Handler` MUST be declared in `handler.go`.

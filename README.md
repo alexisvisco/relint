@@ -61,7 +61,7 @@ Or run the built binary:
 - `LINT-021` Store `RecordNotFound` sentinel return
 - `LINT-022` Handler route method file naming
 - `LINT-023` Route `Input`/`Output` type location in module-scoped `*handler` packages
-- `LINT-024` Shared body type naming in `*handler` packages
+- `LINT-024` Shared body helper type naming in `*handler` packages
 - `LINT-025` Handler struct file location
 - `LINT-026` Body-only helper struct naming
 - `LINT-027` No `json` tags in `model` package structs

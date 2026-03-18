@@ -60,11 +60,11 @@ func checkHTTPAPIRoutePathParams(pass *analysis.Pass, f *ast.File) {
 			if len(m) < 2 {
 				continue
 			}
-			param := m[1]
+			param := normalizePathParam(m[1])
 			if isLowerCamel(param) {
 				continue
 			}
-			pass.Reportf(patternLit.Pos(), "LINT-031: httpapi path param %q must be lowerCamelCase", param)
+			pass.Reportf(patternLit.Pos(), "LINT-031: httpapi path param %q must be lowerCamelCase", m[1])
 		}
 		return true
 	})
@@ -95,6 +95,10 @@ func checkPathTags(pass *analysis.Pass, f *ast.File) {
 		pass.Reportf(field.Tag.Pos(), "LINT-031: path tag %q must be lowerCamelCase", pathName)
 		return true
 	})
+}
+
+func normalizePathParam(param string) string {
+	return strings.TrimSuffix(param, "...")
 }
 
 func isLowerCamel(s string) bool {
