@@ -65,10 +65,10 @@ Package-name suffixes can be excluded from this check via configuration. Default
 Package names that are pluralized MUST NOT be used.
 
 The rule detects plural names generically (for example names ending with `s`), with configurable package-name exceptions.
-Default configured exceptions: `types`, `handlertypes`.
+Default configured exceptions: `types`, `handlertypes`, `params`.
 
 **LINT-010 — Interface location**
-Only interfaces suffixed with `Service` or `Store` MUST be declared in a `types` package (i.e. a file whose package is `types`). `Service`/`Store` interface declarations found outside of a `types` package MUST be flagged. Other interfaces are allowed outside `types`.
+Only interfaces suffixed with `Service` or `Store` MUST be declared in a `types` package (i.e. a file whose package is `types`). `Service`/`Store` interface declarations found outside of a `types` package MUST be flagged. Exception: packages under `core/` are allowed to declare infrastructure `Service`/`Store` interfaces outside `types`. Other interfaces are allowed outside `types`.
 
 **LINT-011 — Service interface suffix**
 Interfaces whose names do not end with `Service` or `Store` and are located in a `types` package MUST be evaluated. Specifically, interfaces semantically acting as services MUST be suffixed `Service`, and those acting as stores MUST be suffixed `Store`. This rule is best enforced via a naming pattern: any interface in `types` that wraps data access methods and is not suffixed `Store` MUST be flagged; any interface wrapping business logic methods not suffixed `Service` MUST be flagged. In practice, enforce: all interfaces in `types/` MUST end with either `Service` or `Store`.
@@ -155,8 +155,8 @@ Example in module `daiteo.io`:
 - `daiteo.io/core/pagination` importing `daiteo.io/core/model` is allowed.
 - `daiteo.io/core/pagination` importing `daiteo.io/smarthubserver/types` is flagged.
 
-**LINT-031 — huma path params lowerCamelCase**
-For `huma` route registrations (`huma.Get`, `huma.Post`, `huma.Put`, `huma.Patch`, `huma.Delete`, `huma.Head`, `huma.Options`) using a string-literal path, path parameters inside `{...}` MUST be `lowerCamelCase`.
+**LINT-031 — httpapi path params lowerCamelCase**
+For `httpapi` route registrations using `WithPattern("METHOD /path")` with a string-literal pattern, path parameters inside `{...}` MUST be `lowerCamelCase`.
 
 Struct field tags using `path:"..."` MUST also use `lowerCamelCase`.
 

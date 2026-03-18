@@ -11,13 +11,13 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "lint010",
-	Doc:      "LINT-010: *Service and *Store interfaces must be declared in a types package",
+	Doc:      "LINT-010: *Service and *Store interfaces must be declared in a types package, except under core",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() == "types" {
+	if pass.Pkg.Name() == "types" || isCorePackage(pass.Pkg.Path()) {
 		return nil, nil
 	}
 
@@ -41,4 +41,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	})
 
 	return nil, nil
+}
+
+func isCorePackage(pkgPath string) bool {
+	return strings.HasSuffix(pkgPath, "/core") || strings.Contains(pkgPath, "/core/")
 }

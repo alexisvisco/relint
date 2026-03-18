@@ -12,65 +12,47 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-const humaImportPath = "github.com/danielgtaylor/huma/v2"
-
-var (
-	pathParamPattern = regexp.MustCompile(`\{([^{}]+)\}`)
-	routeFuncs       = map[string]bool{
-		"Get":     true,
-		"Post":    true,
-		"Put":     true,
-		"Patch":   true,
-		"Delete":  true,
-		"Head":    true,
-		"Options": true,
-	}
-)
+var pathParamPattern = regexp.MustCompile(`\{([^{}]+)\}`)
 
 var Analyzer = &analysis.Analyzer{
 	Name: "lint031",
-	Doc:  "LINT-031: huma path params must be lowerCamelCase",
+	Doc:  "LINT-031: httpapi path params must be lowerCamelCase",
 	Run:  run,
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, f := range pass.Files {
 		checkPathTags(pass, f)
-		checkHumaRoutePathParams(pass, f)
+		checkHTTPAPIRoutePathParams(pass, f)
 	}
 
 	return nil, nil
 }
 
-func checkHumaRoutePathParams(pass *analysis.Pass, f *ast.File) {
-	aliases := humaAliases(f)
-	if len(aliases) == 0 {
-		return
-	}
-
+func checkHTTPAPIRoutePathParams(pass *analysis.Pass, f *ast.File) {
 	ast.Inspect(f, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
 		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok {
+		if !ok || sel.Sel.Name != "WithPattern" {
 			return true
 		}
-		pkgIdent, ok := sel.X.(*ast.Ident)
-		if !ok || !aliases[pkgIdent.Name] || !routeFuncs[sel.Sel.Name] {
+		if len(call.Args) == 0 {
 			return true
 		}
-		if len(call.Args) < 2 {
+		patternLit, ok := call.Args[0].(*ast.BasicLit)
+		if !ok || patternLit.Kind != token.STRING {
 			return true
 		}
-		pathLit, ok := call.Args[1].(*ast.BasicLit)
-		if !ok || pathLit.Kind != token.STRING {
-			return true
-		}
-		path, err := strconv.Unquote(pathLit.Value)
+		pattern, err := strconv.Unquote(patternLit.Value)
 		if err != nil {
 			return true
+		}
+		_, path, hasPath := strings.Cut(strings.TrimSpace(pattern), " ")
+		if !hasPath || path == "" {
+			path = strings.TrimSpace(pattern)
 		}
 
 		matches := pathParamPattern.FindAllStringSubmatch(path, -1)
@@ -82,7 +64,7 @@ func checkHumaRoutePathParams(pass *analysis.Pass, f *ast.File) {
 			if isLowerCamel(param) {
 				continue
 			}
-			pass.Reportf(pathLit.Pos(), "LINT-031: huma path param %q must be lowerCamelCase", param)
+			pass.Reportf(patternLit.Pos(), "LINT-031: httpapi path param %q must be lowerCamelCase", param)
 		}
 		return true
 	})
@@ -113,29 +95,6 @@ func checkPathTags(pass *analysis.Pass, f *ast.File) {
 		pass.Reportf(field.Tag.Pos(), "LINT-031: path tag %q must be lowerCamelCase", pathName)
 		return true
 	})
-}
-
-func humaAliases(f *ast.File) map[string]bool {
-	aliases := make(map[string]bool)
-	for _, imp := range f.Imports {
-		p, err := strconv.Unquote(imp.Path.Value)
-		if err != nil || !isHumaImportPath(p) {
-			continue
-		}
-		alias := "huma"
-		if imp.Name != nil && imp.Name.Name != "" && imp.Name.Name != "_" && imp.Name.Name != "." {
-			alias = imp.Name.Name
-		}
-		aliases[alias] = true
-	}
-	return aliases
-}
-
-func isHumaImportPath(path string) bool {
-	if path == humaImportPath {
-		return true
-	}
-	return strings.HasSuffix(path, "/"+humaImportPath)
 }
 
 func isLowerCamel(s string) bool {

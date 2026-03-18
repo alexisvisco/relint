@@ -1,19 +1,14 @@
 package userhandler
 
-import hapi "github.com/alexisvisco/relint/example/src/github.com/danielgtaylor/huma/v2"
+type Operation struct{}
 
-type UserHandler struct{}
+func (o Operation) WithPattern(_ string) Operation { return o }
 
-func (h *UserHandler) GetDefinition() {}
+func registerRoutes() {
+	Operation{}.WithPattern("GET /api/objects/{objectId}/definition")
+	Operation{}.WithPattern("POST /api/objects/{objectId}/tenant/{tenantId}")
+}
 
 type GetDefinitionInput struct {
 	InvitationToken string `path:"invitationToken"`
-}
-
-func registerRoutes() {
-	var group any
-	h := &UserHandler{}
-
-	hapi.Get(group, "/api/objects/{objectId}/definition", h.GetDefinition)
-	hapi.Post(group, "/api/objects/{objectId}/tenant/{tenantId}", h.GetDefinition)
 }

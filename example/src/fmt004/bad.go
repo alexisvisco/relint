@@ -14,3 +14,13 @@ type GoodInterface interface {
 
 	Baz()
 }
+
+type GoodCommentedInterface interface {
+	Foo()
+
+	// Bar documents the next method and should not count as extra spacing.
+	Bar()
+
+	// Baz is also correctly separated by a single blank line.
+	Baz()
+}

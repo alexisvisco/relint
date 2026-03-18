@@ -32,7 +32,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			prev := methods[i-1]
 			curr := methods[i]
 			prevEnd := fset.Position(prev.End())
-			currStart := fset.Position(curr.Pos())
+			currPos := curr.Pos()
+			if curr.Doc != nil {
+				currPos = curr.Doc.Pos()
+			}
+			currStart := fset.Position(currPos)
 
 			gap := currStart.Line - prevEnd.Line - 1
 

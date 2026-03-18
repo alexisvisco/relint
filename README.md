@@ -47,7 +47,7 @@ Or run the built binary:
 - `LINT-007` Enum value prefix
 - `LINT-008` Package name underscore
 - `LINT-009` Package name plural (generic detection, exceptions supported)
-- `LINT-010` Interface location
+- `LINT-010` Interface location (`core/*` packages excluded)
 - `LINT-011` Service/store interface suffix
 - `LINT-012` Store function return types
 - `LINT-013` Store struct interface assertion
@@ -68,7 +68,7 @@ Or run the built binary:
 - `LINT-028` Exported model fields require `gorm` tag in package `model`
 - `LINT-029` Model relation fields must be `*Type` or `[]*Type` in package `model`
 - `LINT-030` Protected roots (default `core`) must not import sibling roots
-- `LINT-031` `huma` path params must be `lowerCamelCase`
+- `LINT-031` `httpapi` path params must be `lowerCamelCase`
 - `LINT-032` layer constructors must expose a single `New`
 
 See [spec.md](./spec.md) for full rule definitions.
@@ -80,7 +80,7 @@ Rule-specific options are exposed as analyzer flags:
 - `-lint003.dot-notation` (default: empty)
 - `-lint007.exceptions` (default: `environment.Environment`)
 - `-lint008.excluded-suffixes` (default: `_test`)
-- `-lint009.exceptions` (default: `types,handlertypes`)
+- `-lint009.exceptions` (default: `types,handlertypes,params`)
 - `-lint030.roots` (default: `core`)
 
 Examples:
